@@ -10,6 +10,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: finsight
+          POSTGRES_PASSWORD: finsight123
+          POSTGRES_DB: finsight_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
     steps:
     - uses: actions/checkout@v3
     
@@ -23,6 +38,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+    
+    - name: Set environment variables
+      working-directory: ./backend
+      run: |
+        echo "DATABASE_URL=postgresql://finsight:finsight123@localhost:5432/finsight_test" >> $GITHUB_ENV
     
     - name: Run tests
       working-directory: ./backend
