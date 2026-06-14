@@ -1,0 +1,104 @@
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: finsight-postgres
+    environment:
+      POSTGRES_DB: finsight_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Bapun@0108
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: finsight-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finsight-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:Bapun%400108@postgres:5432/finsight_db
+      SECRET_KEY: your-secret-key-change-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      AZURE_CONTAINER_NAME: finsight-uploads
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Django Admin Panel
+  admin_panel:
+    build:
+      context: ./admin_panel
+      dockerfile: Dockerfile
+    container_name: finsight-admin
+    ports:
+      - "8001:8001"
+    environment:
+      DB_NAME: finsight_db
+      DB_USER: postgres
+      DB_PASSWORD: Bapun@0108
+      DB_HOST: postgres
+      DB_PORT: 5432
+      SECRET_KEY: django-insecure-change-in-production
+      DEBUG: True
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./admin_panel:/app
+    command: python manage.py runserver 0.0.0.0:8001
+
+  # ML Service
+  ml_service:
+    build:
+      context: ./ml_service
+      dockerfile: Dockerfile
+    container_name: finsight-ml
+    ports:
+      - "5000:5000"
+    environment:
+      DB_NAME: finsight_db
+      DB_USER: postgres
+      DB_PASSWORD: Bapun@0108
+      DB_HOST: postgres
+      DB_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./ml_service:/app
+    command: python main.py
+
+volumes:
+  postgres_data:
