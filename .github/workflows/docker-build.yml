@@ -1,0 +1,30 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Build backend image
+      run: |
+        docker build -t finsight-backend:latest ./backend
+    
+    - name: Build admin panel image
+      run: |
+        docker build -t finsight-admin:latest ./admin_panel
+    
+    - name: Build ML service image
+      run: |
+        docker build -t finsight-ml:latest ./ml_service
+    
+    - name: Test docker-compose
+      run: |
+        docker-compose -f docker-compose.yml config
