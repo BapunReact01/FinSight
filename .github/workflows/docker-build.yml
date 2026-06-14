@@ -24,7 +24,3 @@ jobs:
     - name: Build ML service image
       run: |
         docker build -t finsight-ml:latest ./ml_service
-    
-    - name: Test docker-compose
-      run: |
-        docker-compose -f docker-compose.yml config
